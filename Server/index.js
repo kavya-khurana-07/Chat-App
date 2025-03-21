@@ -34,6 +34,13 @@ app.use("/api/contacts",contactsRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/channel",channelRoutes);
 
+app.get("/", (req,res,next) => {
+    res.send({
+        activeStatus: true,
+        error: false
+    })
+})
+
 const server = app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });
