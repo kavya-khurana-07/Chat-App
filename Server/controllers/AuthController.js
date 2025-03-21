@@ -121,51 +121,59 @@ export const updateProfile = async (request,response,next) => {
     }
 };
 
-export const addProfileImage = async (request,response,next) => {
+export const addProfileImage = async (request, response, next) => {
     try {
         if (!request.file) {
             return response.status(400).send("File is required.");
         }
-        const date = Date.now();
-        let fileName = "uploads/profiles/" + date + request.file.originalname;
-        renameSync(request.file.path, fileName);
+
+        // Save image temporarily in `/tmp/`
+        const tempPath = `/tmp/${Date.now()}-${request.file.originalname}`;
+        renameSync(request.file.path, tempPath);
+
+        // Update user image path
         const updatedUser = await User.findByIdAndUpdate(
             request.userId,
-            { image: fileName },
+            { image: tempPath }, // Store temp path
             { new: true, runValidators: true }
         );
 
         return response.status(200).json({
-                image: updatedUser.image,
+            image: updatedUser.image,
         });
-    }
-    catch (error) {
-        console.log({error});
+    } catch (error) {
+        console.log({ error });
         return response.status(500).send("Internal Server Error");
     }
 };
 
-export const removeProfileImage = async (request,response,next) => {
+export const removeProfileImage = async (request, response, next) => {
     try {
         const { userId } = request;
         const user = await User.findById(userId);
         if (!user) {
             return response.status(404).send("User not found.");
         }
+
         if (user.image) {
-            unlinkSync(user.image);
+            const imagePath = path.resolve(user.image);
+            try {
+                unlinkSync(imagePath);
+            } catch (err) {
+                console.log("File not found, skipping deletion.");
+            }
         }
+
+        // Remove image reference from DB
         user.image = null;
         await user.save();
 
-        return response.status(200).send("Profile image removed successfully")
-    }
-    catch (error) {
-        console.log({error});
+        return response.status(200).send("Profile image removed successfully");
+    } catch (error) {
+        console.log({ error });
         return response.status(500).send("Internal Server Error");
     }
 };
-
 export const logout = async (request,response,next) => {
     try {
        response.cookie("jwt", "", {maxAge:1})
